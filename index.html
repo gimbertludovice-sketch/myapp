@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android Studio 3D Demonstration - Activity 4</title>
+    <style>
+        :root {
+            --bg-editor: #1e1e24;
+            --bg-sidebar: #121215;
+            --bg-canvas: #2a2a32;
+            --border-color: #33333d;
+            --accent-purple: #6c5ce7;
+            --accent-glow: rgba(108, 92, 231, 0.4);
+            --blueprint-bg: #0f2b48;
+            --blueprint-line: #00e5ff;
+            --text-dark: #2d3436;
+            --text-muted: #636e72;
+            --card-bg: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-editor);
+            color: #dcdde1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            perspective: 1200px;
+        }
+
+        /* IDE Top Header */
+        .ide-header {
+            background-color: #25252b;
+            padding: 8px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .project-title {
+            color: #f5f6fa;
+            font-weight: 600;
+        }
+
+        /* Speech Banner */
+        .audio-bar {
+            background-color: #1a1a20;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border-color);
+            color: #00e676;
+            z-index: 10;
+        }
+
+        .ide-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Left File Explorer */
+        .sidebar {
+            width: 250px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            padding: 12px;
+            font-size: 12px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .tree-item {
+            padding: 6px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .tree-item:hover {
+            background-color: #2c2c35;
+        }
+
+        .tree-item.active {
+            background-color: #1e3799;
+            color: #00a8ff;
+        }
+
+        .indent { margin-left: 14px; }
+        .indent-2 { margin-left: 28px; }
+
+        /* Workspace Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at 50% 50%, #343440 0%, #1e1e24 100%);
+            position: relative;
+        }
+
+        .toolbar {
+            background-color: #25252b;
+            padding: 8px 16px;
+            display: flex;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+            z-index: 10;
+        }
+
+        .btn-toggle {
+            background: #3a3a45;
+            color: #f5f6fa;
+            border: 1px solid #4a4a58;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-toggle:hover {
+            background: #4a4a58;
+        }
+
+        .btn-toggle.active {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        /* 3D Floating Canvas Area */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 50px;
+            padding: 20px;
+            overflow: auto;
+            transform-style: preserve-3d;
+        }
+
+        .device-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform-style: preserve-3d;
+            animation: float3D 6s ease-in-out infinite;
+        }
+
+        .device-container:nth-child(2) {
+            animation-delay: -3s;
+        }
+
+        @keyframes float3D {
+            0% {
+                transform: translateY(0px) rotateX(6deg) rotateY(-4deg);
+            }
+            50% {
+                transform: translateY(-18px) rotateX(10deg) rotateY(4deg);
+            }
+            100% {
+                transform: translateY(0px) rotateX(6deg) rotateY(-4deg);
+            }
+        }
+
+        .device-label {
+            font-size: 13px;
+            margin-bottom: 12px;
+            color: #a4b0be;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .phone-frame {
+            width: 310px;
+            height: 550px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 20px rgba(108, 92, 231, 0.2);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+        }
+
+        /* Design Mode Styling */
+        .mode-design {
+            background-color: #f1f2f6;
+            color: var(--text-dark);
+            padding: 22px 18px;
+        }
+
+        /* Blueprint Wireframe Styling */
+        .mode-blueprint {
+            background-color: var(--blueprint-bg);
+            color: #ffffff;
+            padding: 22px 18px;
+            border: 2px dashed var(--blueprint-line);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 229, 255, 0.3);
+        }
+
+        .mode-blueprint * {
+            background: transparent !important;
+            border: 1px dashed var(--blueprint-line) !important;
+            color: var(--blueprint-line) !important;
+            box-shadow: none !important;
+        }
+
+        .screen-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            height: 100%;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .app-icon {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            border-radius: 50%;
+            margin: 0 auto 12px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 22px;
+            box-shadow: 0 4px 10px rgba(0, 206, 201, 0.4);
+        }
+
+        .title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #2d3436;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-purple);
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 4px 12px var(--accent-glow);
+            transition: transform 0.2s;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .info-card {
+            text-align: left;
+            font-size: 12px;
+            line-height: 1.8;
+            color: var(--text-dark);
+        }
+
+        /* Floating Explanation Panel */
+        .explanation-panel {
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            width: 360px;
+            background: rgba(25, 25, 32, 0.92);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 12px;
+            color: #dcdde1;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 20;
+            line-height: 1.6;
+        }
+
+        .explanation-header {
+            font-weight: bold;
+            color: #00a8ff;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .explanation-body strong {
+            color: #f5f6fa;
+        }
+
+        .explanation-body ul {
+            margin-left: 16px;
+            margin-top: 6px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Bar -->
+    <div class="ide-header">
+        <span class="project-title">Activity4MyApp [Activity 4 - MyApp] - Android Studio</span>
+        <span>Device: Infinix Smart 8 (API 37.1)</span>
+    </div>
+
+    <!-- Live Audio Banner -->
+    <div class="audio-bar">
+        <span>🔊 Technical Audio Commentary: <strong id="speech-status">Ready (Click any file or button)</strong></span>
+        <button class="btn-toggle" onclick="speakText('Demonstrating 3D Floating View, layout specs, and Blueprint placement for Sir John Kyle Martin.')">Test Audio</button>
+    </div>
+
+    <!-- Workspace -->
+    <div class="ide-container">
+        
+        <!-- File Explorer -->
+        <div class="sidebar">
+            <div class="tree-item">📁 app</div>
+            <div class="tree-item indent">📁 src</div>
+            <div class="tree-item indent-2">📁 main</div>
+            <div class="tree-item indent-2">📁 res</div>
+            <div class="tree-item indent-2" style="margin-left:42px;">📁 layout</div>
+            <div class="tree-item active" style="margin-left:56px;" id="file-main" onclick="switchScreen('main')">📄 activity_main.xml</div>
+            <div class="tree-item" style="margin-left:56px;" id="file-profile" onclick="switchScreen('profile')">📄 activity_profile.xml</div>
+            <div class="tree-item indent-2" style="margin-left:28px; margin-top:8px;">📄 AndroidManifest.xml</div>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="main-content">
+            
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <span style="font-size:12px; font-weight:bold; margin-right:10px;">Display Mode:</span>
+                <button class="btn-toggle active" id="btn-both" onclick="setViewMode('both')">Design + Blueprint</button>
+                <button class="btn-toggle" id="btn-design" onclick="setViewMode('design')">Design Only</button>
+                <button class="btn-toggle" id="btn-blueprint" onclick="setViewMode('blueprint')">Blueprint Only</button>
+            </div>
+
+            <!-- Virtual Canvas with 3D Floating Effect -->
+            <div class="canvas-area">
+                
+                <!-- DESIGN VIEW -->
+                <div class="device-container" id="container-design">
+                    <div class="device-label">Design View</div>
+                    <div class="phone-frame mode-design">
+                        
+                        <!-- MAIN SCREEN -->
+                        <div id="screen-main-design" class="screen-content">
+                            <div class="card">
+                                <div class="app-icon">🤖</div>
+                                <div class="title">Welcome Sir John Kyle Martin</div>
+                                <div class="subtitle">Activity 4 Mobile Application</div>
+                                <button class="btn-primary" onclick="switchScreen('profile')">Go to Profile</button>
+                            </div>
+
+                            <div class="card info-card">
+                                <div style="color: var(--accent-purple); font-weight: bold; margin-bottom: 6px;">User Information</div>
+                                <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 8px;">
+                                <div><strong>Name:</strong> Sir John Kyle Martin</div>
+                                <div><strong>Section:</strong> WITMWD3M1</div>
+                                <div><strong>Date:</strong> 10/02/26</div>
+                                <div><strong>Professor:</strong> Sir John Kyle Martin</div>
+                            </div>
+                        </div>
+
+                        <!-- PROFILE SCREEN -->
+                        <div id="screen-profile-design" class="screen-content hidden">
+                            <div class="card">
+                                <div class="title" style="color: var(--accent-purple);">Profile Screen</div>
+                                <div class="subtitle">This is your profile screen.</div>
+                                
+                                <div class="card info-card" style="background-color: #f8f9fa; margin: 12px 0;">
+                                    <div><strong>Name:</strong> Sir John Kyle Martin</div>
+                                    <div><strong>Section:</strong> WITMWD3M1</div>
+                                    <div><strong>Date:</strong> 10/02/26</div>
+                                    <div><strong>Professor:</strong> Sir John Kyle Martin</div>
+                                </div>
+
+                                <button class="btn-primary" onclick="switchScreen('main')">Back to Home</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- BLUEPRINT VIEW -->
+                <div class="device-container" id="container-blueprint">
+                    <div class="device-label">Blueprint (Wireframe) View</div>
+                    <div class="phone-frame mode-blueprint">
+                        
+                        <!-- MAIN SCREEN BLUEPRINT -->
+                        <div id="screen-main-blueprint" class="screen-content">
+                            <div class="card">
+                                <div class="app-icon">[Icon]</div>
+                                <div class="title">Welcome Sir John Kyle Martin</div>
+                                <div class="subtitle">Activity 4 Mobile Application</div>
+                                <button class="btn-primary">Go to Profile</button>
+                            </div>
+
+                            <div class="card info-card">
+                                <div>[TextView: User Information]</div>
+                                <div>Name: Sir John Kyle Martin</div>
+                                <div>Section: WITMWD3M1</div>
+                                <div>Date: 10/02/26</div>
+                                <div>Professor: Sir John Kyle Martin</div>
+                            </div>
+                        </div>
+
+                        <!-- PROFILE SCREEN BLUEPRINT -->
+                        <div id="screen-profile-blueprint" class="screen-content hidden">
+                            <div class="card">
+                                <div class="title">Profile Screen</div>
+                                <div class="subtitle">This is your profile screen.</div>
+                                
+                                <div class="card info-card">
+                                    <div>Name: Sir John Kyle Martin</div>
+                                    <div>Section: WITMWD3M1</div>
+                                    <div>Date: 10/02/26</div>
+                                    <div>Professor: Sir John Kyle Martin</div>
+                                </div>
+
+                                <button class="btn-primary">Back to Home</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Floating Technical Explanation Panel (In English) -->
+            <div class="explanation-panel">
+                <div class="explanation-header">
+                    <span>Technical Architecture & Layout Specs</span>
+                    <span style="font-size:10px; color:#a4b0be;">LIVE INFO</span>
+                </div>
+                <div class="explanation-body" id="explanation-content">
+                    <strong>1. Layout Size & Dimensions:</strong>
+                    <ul>
+                        <li>Device canvas simulated at 310dp width × 550dp height.</li>
+                        <li>Outer padding: 22dp top/bottom, 18dp horizontal.</li>
+                        <li>Card corner radius: 16dp with subtle drop shadows.</li>
+                    </ul>
+                    <strong style="margin-top:6px; display:block;">2. Blueprint Placement & Rendering:</strong>
+                    <ul>
+                        <li>Constructed with vertical <code>LinearLayout</code> container structure.</li>
+                        <li>Blueprint mode displays wireframe structural outlines with cyan dashed vectors (`#00e5ff`).</li>
+                    </ul>
+                    <strong style="margin-top:6px; display:block;">3. Creation & Step-by-step Process:</strong>
+                    <ul>
+                        <li>Created layout XML files under <code>res/layout/</code> directory.</li>
+                        <li>Configured explicit Intent navigation between `MainActivity` and `ProfileActivity`.</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript Engine -->
+    <script>
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                
+                document.getElementById('speech-status').innerText = `Speaking: "${text}"`;
+                
+                utterance.onend = function() {
+                    document.getElementById('speech-status').innerText = "Ready";
+                };
+
+                window.speechSynthesis.speak(utterance);
+            } else {
+                document.getElementById('speech-status').innerText = "Text-to-speech not supported.";
+            }
+        }
+
+        function switchScreen(screenName) {
+            document.getElementById('file-main').classList.remove('active');
+            document.getElementById('file-profile').classList.remove('active');
+            
+            const expContent = document.getElementById('explanation-content');
+
+            if (screenName === 'main') {
+                document.getElementById('file-main').classList.add('active');
+                
+                document.getElementById('screen-main-design').classList.remove('hidden');
+                document.getElementById('screen-profile-design').classList.add('hidden');
+                
+                document.getElementById('screen-main-blueprint').classList.remove('hidden');
+                document.getElementById('screen-profile-blueprint').classList.add('hidden');
+
+                expContent.innerHTML = `
+                    <strong>1. Layout Size & Dimensions:</strong>
+                    <ul>
+                        <li>View Container: 310dp × 550dp scaled viewport.</li>
+                        <li>Card Radius: 16dp rounded corners with 4dp elevation shadow.</li>
+                    </ul>
+                    <strong style="margin-top:6px; display:block;">2. Blueprint Placement & Rendering:</strong>
+                    <ul>
+                        <li>Placed top MaterialCardView with TextView 'Welcome Sir John Kyle Martin'.</li>
+                        <li>Configured MaterialButton with ID 'btnProfile' attached to Intent listener.</li>
+                    </ul>
+                    <strong style="margin-top:6px; display:block;">3. Creation & Step-by-step Process:</strong>
+                    <ul>
+                        <li>Root ScrollView ensures responsive scrolling across devices.</li>
+                        <li>Registered MainActivity as LAUNCHER inside AndroidManifest.xml.</li>
+                    </ul>
+                `;
+
+                speakText("Displaying activity main layout with Welcome Sir John Kyle Martin text.");
+            } else {
+                document.getElementById('file-profile').classList.add('active');
+                
+                document.getElementById('screen-main-design').classList.add('hidden');
+                document.getElementById('screen-profile-design').classList.remove('hidden');
+                
+                document.getElementById('screen-main-blueprint').classList.add('hidden');
+                document.getElementById('screen-profile-blueprint').classList.remove('hidden');
+
+                expContent.innerHTML = `
+                    <strong>1. Layout Size & Dimensions:</strong>
+                    <ul>
+                        <li>Profile Container: Full match_parent viewport.</li>
+                        <li>Inner Card Padding: 20dp padding with centered text alignment.</li>
+                    </ul>
+                    <strong style="margin-top:6px; display:block;">2. Blueprint Placement & Rendering:</strong>
+                    <ul>
+                        <li>Placed TextView with text 'Profile Screen'.</li>
+                        <li>Positioned 'Back to Home' MaterialButton at the bottom.</li>
+                    </ul>
+                    <strong style="margin-top:6px; display:block;">3. Creation & Step-by-step Process:</strong>
+                    <ul>
+                        <li>ProfileActivity class invokes setContentView(R.layout.activity_profile).</li>
+                        <li>Back button calls finish() to navigate back to MainActivity.</li>
+                    </ul>
+                `;
+
+                speakText("Switched to ProfileActivity using explicit Intent. Displaying Profile Screen layout.");
+            }
+        }
+
+        function setViewMode(mode) {
+            document.getElementById('btn-both').classList.remove('active');
+            document.getElementById('btn-design').classList.remove('active');
+            document.getElementById('btn-blueprint').classList.remove('active');
+
+            const designContainer = document.getElementById('container-design');
+            const blueprintContainer = document.getElementById('container-blueprint');
+
+            if (mode === 'both') {
+                document.getElementById('btn-both').classList.add('active');
+                designContainer.classList.remove('hidden');
+                blueprintContainer.classList.remove('hidden');
+                speakText("Showing both Design and Blueprint modes with floating 3D animation.");
+            } else if (mode === 'design') {
+                document.getElementById('btn-design').classList.add('active');
+                designContainer.classList.remove('hidden');
+                blueprintContainer.classList.add('hidden');
+                speakText("Showing Design mode only.");
+            } else if (mode === 'blueprint') {
+                document.getElementById('btn-blueprint').classList.add('active');
+                designContainer.classList.add('hidden');
+                blueprintContainer.classList.remove('hidden');
+                speakText("Showing Blueprint mode wireframe only.");
+            }
+        }
+
+        window.addEventListener('click', function initAudio() {
+            speakText("Welcome Sir John Kyle Martin. Demonstrating Activity 4 layout and 3D floating blueprint execution.");
+            window.removeEventListener('click', initAudio);
+        }, { once: true });
+    </script>
+</body>
+</html>
